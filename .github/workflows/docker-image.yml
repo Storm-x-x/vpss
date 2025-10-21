@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: Build and Test Docker with Ngrok
 
 on:
   push:
@@ -7,18 +7,75 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build-and-test:
 
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
-    
-    - name: Test the Docker image and get ngrok URL
+    - name: Build Docker image
+      id: build
       run: |
-        docker run -d --name test-ngrok my-image-name:$(date +%s)
-        sleep 10
-        docker logs test-ngrok
+        # Build with simple tag
+        docker build . --file Dockerfile --tag my-ngrok-image
+        echo "✅ Docker image built successfully"
+    
+    - name: Test Docker image
+      run: |
+        echo "🧪 Starting container test..."
+        
+        # Run container in background
+        docker run -d --name ngrok-test-container my-ngrok-image
+        
+        # Wait for services to start
+        echo "⏳ Waiting for ngrok to initialize (30 seconds)..."
+        sleep 30
+        
+        # Check container status
+        echo "=== CONTAINER STATUS ==="
+        docker ps -a
+        
+        # Show ngrok logs
+        echo "=== NGROK LOGS ==="
+        docker logs ngrok-test-container --tail 50
+        
+        # Try to get tunnel information via API
+        echo "=== ATTEMPTING TO GET TUNNEL INFO ==="
+        docker exec ngrok-test-container curl -s http://localhost:4040/api/tunnels 2>/dev/null || echo "API not ready yet"
+        
+        # Show full logs if tunnel not found
+        echo "=== FULL NGROK LOGS ==="
+        docker logs ngrok-test-container
+        
+        # Cleanup
+        echo "🧹 Cleaning up..."
+        docker stop ngrok-test-container || true
+        docker rm ngrok-test-container || true
+        
+        echo "✅ Test completed"
+    
+    - name: Upload ngrok logs as artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ngrok-logs
+        path: |
+          /tmp/ngrok-output.txt
+        retention-days: 1
+
+  manual-test:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Build and run interactive test
+      run: |
+        docker build . --file Dockerfile --tag interactive-test
+        echo "🎯 Starting interactive test - check GitHub Actions logs for ngrok URL"
+        echo "⏰ This will run for 2 minutes to capture ngrok connection..."
+        timeout 120s docker run --rm interactive-test || true
