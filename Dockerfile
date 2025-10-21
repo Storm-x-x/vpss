@@ -26,7 +26,7 @@ RUN apt-get update && \
       software-properties-common \
     && rm -rf /var/lib/apt/lists/*
 
-# Python 3.12 - FIXED: added software-properties-common above
+# Python 3.12
 RUN add-apt-repository ppa:deadsnakes/ppa -y && \
     apt-get update && \
     apt-get install -y --no-install-recommends python3.12 python3.12-venv && \
@@ -48,8 +48,12 @@ RUN curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc | tee /etc/apt/trus
     && apt-get install -y --no-install-recommends ngrok \
     && rm -rf /var/lib/apt/lists/*
 
-# Add ngrok token
-RUN if [ -n "${NGROK_AUTHTOKEN}" ]; then ngrok config add-authtoken "${NGROK_AUTHTOKEN}"; fi
+# Create ngrok config directory and add token with region
+RUN mkdir -p /root/.config/ngrok && \
+    if [ -n "${NGROK_AUTHTOKEN}" ]; then \
+      ngrok config add-authtoken "${NGROK_AUTHTOKEN}" && \
+      echo "region: ap" >> /root/.config/ngrok/ngrok.yml; \
+    fi
 
 # Optional hostname file
 RUN echo "Dark" > /etc/hostname
@@ -59,5 +63,5 @@ RUN echo 'export PS1="root@Dark:\\w# "' >> /root/.bashrc
 
 EXPOSE 22
 
-# Start sshd and ngrok (foreground)
-CMD ["sh", "-c", "/usr/sbin/sshd && ngrok tcp 22 --log=stdout"]
+# Start sshd and ngrok with better logging
+CMD ["sh", "-c", "/usr/sbin/sshd && echo 'Starting ngrok...' && ngrok tcp 22 --region=ap --log=stdout"]
