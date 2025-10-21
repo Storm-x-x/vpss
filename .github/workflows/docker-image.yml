@@ -25,8 +25,8 @@ jobs:
         docker run -d --name ngrok-test my-ngrok-image
         
         # Wait for ngrok to start
-        echo "⏳ Waiting for ngrok to initialize (25 seconds)..."
-        sleep 25
+        echo "⏳ Waiting for ngrok to initialize (30 seconds)..."
+        sleep 30
         
         # Check container status
         echo "=== CONTAINER STATUS ==="
@@ -36,16 +36,20 @@ jobs:
         echo "=== NGROK LOGS ==="
         docker logs ngrok-test
         
-        # Try to get tunnel info
-        echo "=== ATTEMPTING TO GET TUNNEL INFO ==="
-        docker exec ngrok-test curl -s http://localhost:4040/api/tunnels || echo "API might not be ready"
+        # Try to get tunnel info via API
+        echo "=== ATTEMPTING TO GET TUNNEL INFO VIA API ==="
+        docker exec ngrok-test curl -s http://localhost:4040/api/tunnels 2>/dev/null || echo "API might not be available"
         
-        # Save logs to file
+        # Look for the ngrok URL in logs
+        echo "=== SEARCHING FOR NGROK URL IN LOGS ==="
+        docker logs ngrok-test | grep -E "tcp://.*ngrok\.io|url=tcp://|started tunnel" || echo "Checking alternative patterns..."
+        
+        # Show full logs for debugging
+        echo "=== FULL LOGS (last 50 lines) ==="
+        docker logs ngrok-test | tail -50
+        
+        # Save logs
         docker logs ngrok-test > ngrok-output.txt
-        
-        # Display the important part
-        echo "=== CHECK FOR NGROK URL ==="
-        docker logs ngrok-test | grep -E "(public_url|tcp://|ngrok.io)" || echo "No ngrok URL found yet"
         
         # Cleanup
         docker stop ngrok-test || true
