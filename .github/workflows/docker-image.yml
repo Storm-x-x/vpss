@@ -25,8 +25,8 @@ jobs:
         docker run -d --name ngrok-test my-ngrok-image
         
         # Wait for ngrok to start
-        echo "⏳ Waiting for ngrok to initialize (25 seconds)..."
-        sleep 25
+        echo "⏳ Waiting for ngrok to initialize (30 seconds)..."
+        sleep 30
         
         # Check container status
         echo "=== CONTAINER STATUS ==="
@@ -36,16 +36,29 @@ jobs:
         echo "=== NGROK LOGS ==="
         docker logs ngrok-test
         
+        # Check if token was configured
+        echo "=== CHECKING TOKEN CONFIG ==="
+        if docker logs ngrok-test | grep -q "Authtoken saved"; then
+          echo "✅ Token configured successfully"
+        else
+          echo "❌ Token not configured"
+        fi
+        
         # Look for the ngrok URL
         echo "=== SEARCHING FOR NGROK URL ==="
-        docker logs ngrok-test | grep -E "tcp://.*ngrok\.io|started tunnel|public_url" || echo "Checking for URL..."
+        if docker logs ngrok-test | grep -q "started tunnel"; then
+          echo "✅ Tunnel started successfully!"
+          docker logs ngrok-test | grep "started tunnel"
+        elif docker logs ngrok-test | grep -q "tcp://"; then
+          echo "✅ Found ngrok URL!"
+          docker logs ngrok-test | grep "tcp://"
+        else
+          echo "❌ No tunnel URL found"
+          docker logs ngrok-test | tail -20
+        fi
         
         # Save logs
         docker logs ngrok-test > ngrok-output.txt
-        
-        # Show last 20 lines for debugging
-        echo "=== RECENT LOGS ==="
-        tail -20 ngrok-output.txt
         
         # Cleanup
         docker stop ngrok-test || true
