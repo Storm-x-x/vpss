@@ -64,39 +64,45 @@ RUN echo "Dark" > /etc/hostname
 # Force bash prompt
 RUN echo 'export PS1="root@Dark:\\w# "' >> /root/.bashrc
 
+# Create startup script
+RUN cat > /start.sh << 'EOF'
+#!/bin/bash
+# Start SSH daemon in background
+mkdir -p /var/run/sshd
+/usr/sbin/sshd &
+
+# Wait a moment for SSH to start
+sleep 3
+
+# Start ngrok and capture output
+echo '🚀 Starting ngrok tunnel...'
+echo '📡 Connecting to ngrok servers...'
+
+# Start ngrok in background and capture logs
+ngrok tcp 22 --region=ap --log=stdout > /var/log/ngrok.log 2>&1 &
+
+# Wait for ngrok to establish connection
+sleep 10
+
+# Show recent ngrok logs
+echo '=== NGROK CONNECTION STATUS ==='
+tail -20 /var/log/ngrok.log
+
+# Try to get tunnel info using ngrok API
+echo '=== TUNNEL INFORMATION ==='
+curl -s http://localhost:4040/api/tunnels 2>/dev/null | grep -o '"public_url":"[^"]*"' || echo 'Waiting for tunnel to establish...'
+
+echo '✅ SSH Server is running on port 22'
+echo '🔍 Ngrok web interface available on http://localhost:4040'
+echo '📝 Check /var/log/ngrok.log for detailed connection info'
+
+# Keep container running and show real-time logs
+tail -f /var/log/ngrok.log
+EOF
+
+RUN chmod +x /start.sh
+
 EXPOSE 22 4040
 
-# Start script that shows ngrok URL clearly
-CMD ["sh", "-c", "
-  # Start SSH daemon in background
-  mkdir -p /var/run/sshd
-  /usr/sbin/sshd &
-  
-  # Wait a moment for SSH to start
-  sleep 3
-  
-  # Start ngrok and capture output
-  echo '🚀 Starting ngrok tunnel...'
-  echo '📡 Connecting to ngrok servers...'
-  
-  # Start ngrok in background and capture logs
-  ngrok tcp 22 --region=ap --log=stdout > /var/log/ngrok.log 2>&1 &
-  
-  # Wait for ngrok to establish connection
-  sleep 10
-  
-  # Show recent ngrok logs
-  echo '=== NGROK CONNECTION STATUS ==='
-  tail -20 /var/log/ngrok.log
-  
-  # Try to get tunnel info using ngrok API
-  echo '=== TUNNEL INFORMATION ==='
-  curl -s http://localhost:4040/api/tunnels 2>/dev/null | grep -o '"public_url":"[^"]*"' || echo 'Waiting for tunnel to establish...'
-  
-  echo '✅ SSH Server is running on port 22'
-  echo '🔍 Ngrok web interface available on http://localhost:4040'
-  echo '📝 Check /var/log/ngrok.log for detailed connection info'
-  
-  # Keep container running and show real-time logs
-  tail -f /var/log/ngrok.log
-"]
+# Start using the script
+CMD ["/start.sh"]
