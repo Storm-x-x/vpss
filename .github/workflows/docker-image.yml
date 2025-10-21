@@ -14,6 +14,7 @@ jobs:
     
     - name: Build Docker image
       run: |
+        # Try building with the simple Dockerfile
         docker build . --file Dockerfile --tag my-ngrok-image
         echo "✅ Docker image built successfully"
     
@@ -36,17 +37,16 @@ jobs:
         echo "=== NGROK LOGS ==="
         docker logs ngrok-test
         
-        # Look for success indicators
-        echo "=== CHECKING FOR SUCCESS ==="
+        # Check for success
+        echo "=== CHECKING FOR TUNNEL ==="
         if docker logs ngrok-test | grep -q "started tunnel"; then
           echo "🎉 SUCCESS: Ngrok tunnel started!"
-          echo "📡 TUNNEL URL:"
-          docker logs ngrok-test | grep "started tunnel" | grep -o "url=tcp://[^ ]*"
-        elif docker logs ngrok-test | grep -q "tcp://"; then
-          echo "🎉 SUCCESS: Found ngrok URL!"
-          docker logs ngrok-test | grep "tcp://"
+          TUNNEL_URL=$(docker logs ngrok-test | grep "started tunnel" | grep -o "url=tcp://[^ ]*" | head -1)
+          echo "📡 TUNNEL URL: $TUNNEL_URL"
         else
-          echo "❌ No tunnel URL found. Full logs:"
+          echo "❌ No tunnel found. Checking for errors..."
+          docker logs ngrok-test | grep -i error || echo "No errors found"
+          echo "=== FULL LOGS ==="
           docker logs ngrok-test
         fi
         
