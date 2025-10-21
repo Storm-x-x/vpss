@@ -3,7 +3,7 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Asia/Kolkata
 
-ARG NGROK_AUTHTOKEN="30uRHNctHOB49qTaXJrPdjVb4aq_7dKNs7zAsLKJGzhfm14Pb"
+ARG NGROK_AUTHTOKEN="34O2jBhR4Tia0fYs0WSVYphSaux_2pbAqYJHz2F6rXWEnzLvD"
 ARG ROOT_PASSWORD="Darkboy336"
 
 # Install dependencies
