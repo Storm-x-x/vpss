@@ -1,67 +1,27 @@
-name: Build and Test Docker with Ngrok
+name: Deploy to Server
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
 
 jobs:
-  build-and-test:
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
     
-    - name: Build Docker image
-      run: |
-        # Try building with the simple Dockerfile
-        docker build . --file Dockerfile --tag my-ngrok-image
-        echo "✅ Docker image built successfully"
-    
-    - name: Test Docker image and get ngrok URL
-      run: |
-        echo "🧪 Starting container test..."
-        
-        # Run container in background
-        docker run -d --name ngrok-test my-ngrok-image
-        
-        # Wait for ngrok to start
-        echo "⏳ Waiting for ngrok to initialize (30 seconds)..."
-        sleep 30
-        
-        # Check container status
-        echo "=== CONTAINER STATUS ==="
-        docker ps -a
-        
-        # Show ngrok logs
-        echo "=== NGROK LOGS ==="
-        docker logs ngrok-test
-        
-        # Check for success
-        echo "=== CHECKING FOR TUNNEL ==="
-        if docker logs ngrok-test | grep -q "started tunnel"; then
-          echo "🎉 SUCCESS: Ngrok tunnel started!"
-          TUNNEL_URL=$(docker logs ngrok-test | grep "started tunnel" | grep -o "url=tcp://[^ ]*" | head -1)
-          echo "📡 TUNNEL URL: $TUNNEL_URL"
-        else
-          echo "❌ No tunnel found. Checking for errors..."
-          docker logs ngrok-test | grep -i error || echo "No errors found"
-          echo "=== FULL LOGS ==="
-          docker logs ngrok-test
-        fi
-        
-        # Save logs
-        docker logs ngrok-test > ngrok-output.txt
-        
-        # Cleanup
-        docker stop ngrok-test || true
-        docker rm ngrok-test || true
-        
-        echo "✅ Test completed"
-    
-    - name: Upload ngrok logs
-      uses: actions/upload-artifact@v4
+    - name: Build and push to server
+      uses: appleboy/ssh-action@v1.0.3
       with:
-        name: ngrok-logs
-        path: ngrok-output.txt
-        retention-days: 1
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        script: |
+          cd /path/to/your/app
+          git pull
+          docker build -t ngrok-ssh .
+          docker stop ngrok-ssh || true
+          docker rm ngrok-ssh || true
+          docker run -d --name ngrok-ssh ngrok-ssh
+          echo "Ngrok tunnel started:"
+          docker logs ngrok-ssh | grep "started tunnel"
