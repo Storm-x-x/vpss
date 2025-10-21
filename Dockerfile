@@ -3,8 +3,9 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Asia/Kolkata
 
-ARG NGROK_AUTHTOKEN="34914Ptd48gbHXPmcNYxWEXCxpu_3V4itphQ1buQFCVEn8C1h"
-ARG ROOT_PASSWORD="Darkboy336"
+# Remove ARG and use ENV for runtime
+ENV NGROK_AUTHTOKEN="34914Ptd48gbHXPmcNYxWEXCxpu_3V4itphQ1buQFCVEn8C1h"
+ENV ROOT_PASSWORD="Darkboy336"
 
 # Install dependencies
 RUN apt-get update && \
@@ -25,7 +26,7 @@ RUN echo "root:${ROOT_PASSWORD}" | chpasswd && \
     sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
     sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
 
-# Install ngrok using direct download (working version)
+# Install ngrok using direct download
 RUN wget -q https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz -O - | tar xz -C /usr/local/bin/ && \
     chmod +x /usr/local/bin/ngrok
 
@@ -35,5 +36,19 @@ RUN echo "Dark" > /etc/hostname && \
 
 EXPOSE 22
 
-# Simple startup - this should work now
-CMD ["sh", "-c", "/usr/sbin/sshd && ngrok config add-authtoken \"${NGROK_AUTHTOKEN}\" && echo \"🚀 Starting ngrok SSH tunnel...\" && ngrok tcp 22 --log=stdout"]
+# Create startup script that uses the ENV variable
+RUN cat > /start.sh << 'EOF'
+#!/bin/bash
+echo "🔧 Configuring ngrok with token..."
+ngrok config add-authtoken "$NGROK_AUTHTOKEN"
+
+echo "🚀 Starting SSH server..."
+/usr/sbin/sshd
+
+echo "🌐 Starting ngrok tunnel..."
+exec ngrok tcp 22 --log=stdout
+EOF
+
+RUN chmod +x /start.sh
+
+CMD ["/start.sh"]
