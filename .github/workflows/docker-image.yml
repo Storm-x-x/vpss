@@ -3,12 +3,9 @@ name: Build and Test Docker with Ngrok
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
 
 jobs:
   build-and-test:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -16,67 +13,49 @@ jobs:
       uses: actions/checkout@v4
     
     - name: Build Docker image
-      id: build
       run: |
-        # Build with simple tag
         docker build . --file Dockerfile --tag my-ngrok-image
         echo "✅ Docker image built successfully"
     
-    - name: Test Docker image
+    - name: Test Docker image and get ngrok URL
       run: |
         echo "🧪 Starting container test..."
         
         # Run container in background
-        docker run -d --name ngrok-test-container my-ngrok-image
+        docker run -d --name ngrok-test my-ngrok-image
         
-        # Wait for services to start
-        echo "⏳ Waiting for ngrok to initialize (30 seconds)..."
-        sleep 30
+        # Wait for ngrok to start
+        echo "⏳ Waiting for ngrok to initialize (25 seconds)..."
+        sleep 25
         
         # Check container status
         echo "=== CONTAINER STATUS ==="
         docker ps -a
         
         # Show ngrok logs
-        echo "=== NGROK LOGS (last 100 lines) ==="
-        docker logs ngrok-test-container --tail 100
+        echo "=== NGROK LOGS ==="
+        docker logs ngrok-test
         
-        # Try to get tunnel information via API
-        echo "=== ATTEMPTING TO GET TUNNEL INFO VIA API ==="
-        docker exec ngrok-test-container curl -s http://localhost:4040/api/tunnels || echo "API not ready yet"
+        # Try to get tunnel info
+        echo "=== ATTEMPTING TO GET TUNNEL INFO ==="
+        docker exec ngrok-test curl -s http://localhost:4040/api/tunnels || echo "API might not be ready"
         
-        # Show full logs if tunnel not found
-        echo "=== RECENT NGROK LOGS ==="
-        docker logs ngrok-test-container | tail -50
+        # Save logs to file
+        docker logs ngrok-test > ngrok-output.txt
         
-        # Save logs to file for artifact
-        docker logs ngrok-test-container > ngrok-logs.txt
+        # Display the important part
+        echo "=== CHECK FOR NGROK URL ==="
+        docker logs ngrok-test | grep -E "(public_url|tcp://|ngrok.io)" || echo "No ngrok URL found yet"
         
         # Cleanup
-        echo "🧹 Cleaning up..."
-        docker stop ngrok-test-container || true
-        docker rm ngrok-test-container || true
+        docker stop ngrok-test || true
+        docker rm ngrok-test || true
         
         echo "✅ Test completed"
     
-    - name: Upload ngrok logs as artifact
-      if: always()
+    - name: Upload ngrok logs
       uses: actions/upload-artifact@v4
       with:
         name: ngrok-logs
-        path: ngrok-logs.txt
+        path: ngrok-output.txt
         retention-days: 1
-
-  quick-test:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Quick build test
-      run: |
-        # Just build to verify Dockerfile is valid
-        docker build . --file Dockerfile --tag quick-test
-        echo "✅ Dockerfile is valid and builds successfully"
