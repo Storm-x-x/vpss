@@ -64,41 +64,39 @@ RUN echo "Dark" > /etc/hostname
 # Force bash prompt
 RUN echo 'export PS1="root@Dark:\\w# "' >> /root/.bashrc
 
-# Create startup script
-RUN cat > /start.sh << 'EOF'
-#!/bin/bash
-# Start SSH daemon in background
-mkdir -p /var/run/sshd
-/usr/sbin/sshd &
-
-# Wait a moment for SSH to start
-sleep 3
-
-# Start ngrok and capture output
-echo '🚀 Starting ngrok tunnel...'
-echo '📡 Connecting to ngrok servers...'
-
-# Start ngrok in background and capture logs
-ngrok tcp 22 --region=ap --log=stdout > /var/log/ngrok.log 2>&1 &
-
-# Wait for ngrok to establish connection
-sleep 10
-
-# Show recent ngrok logs
-echo '=== NGROK CONNECTION STATUS ==='
-tail -20 /var/log/ngrok.log
-
-# Try to get tunnel info using ngrok API
-echo '=== TUNNEL INFORMATION ==='
-curl -s http://localhost:4040/api/tunnels 2>/dev/null | grep -o '"public_url":"[^"]*"' || echo 'Waiting for tunnel to establish...'
-
-echo '✅ SSH Server is running on port 22'
-echo '🔍 Ngrok web interface available on http://localhost:4040'
-echo '📝 Check /var/log/ngrok.log for detailed connection info'
-
-# Keep container running and show real-time logs
-tail -f /var/log/ngrok.log
-EOF
+# Create startup script using echo commands
+RUN echo '#!/bin/bash' > /start.sh && \
+    echo '# Start SSH daemon in background' >> /start.sh && \
+    echo 'mkdir -p /var/run/sshd' >> /start.sh && \
+    echo '/usr/sbin/sshd &' >> /start.sh && \
+    echo '' >> /start.sh && \
+    echo '# Wait a moment for SSH to start' >> /start.sh && \
+    echo 'sleep 3' >> /start.sh && \
+    echo '' >> /start.sh && \
+    echo '# Start ngrok and capture output' >> /start.sh && \
+    echo 'echo "🚀 Starting ngrok tunnel..."' >> /start.sh && \
+    echo 'echo "📡 Connecting to ngrok servers..."' >> /start.sh && \
+    echo '' >> /start.sh && \
+    echo '# Start ngrok in background and capture logs' >> /start.sh && \
+    echo 'ngrok tcp 22 --region=ap --log=stdout > /var/log/ngrok.log 2>&1 &' >> /start.sh && \
+    echo '' >> /start.sh && \
+    echo '# Wait for ngrok to establish connection' >> /start.sh && \
+    echo 'sleep 15' >> /start.sh && \
+    echo '' >> /start.sh && \
+    echo '# Show recent ngrok logs' >> /start.sh && \
+    echo 'echo "=== NGROK CONNECTION STATUS ==="' >> /start.sh && \
+    echo 'tail -20 /var/log/ngrok.log' >> /start.sh && \
+    echo '' >> /start.sh && \
+    echo '# Try to get tunnel info using ngrok API' >> /start.sh && \
+    echo 'echo "=== TUNNEL INFORMATION ==="' >> /start.sh && \
+    echo 'curl -s http://localhost:4040/api/tunnels 2>/dev/null | grep -o '"'"'"public_url":"[^"]*"'"'"' || echo "Waiting for tunnel to establish..."' >> /start.sh && \
+    echo '' >> /start.sh && \
+    echo 'echo "✅ SSH Server is running on port 22"' >> /start.sh && \
+    echo 'echo "🔍 Ngrok web interface available on http://localhost:4040"' >> /start.sh && \
+    echo 'echo "📝 Check /var/log/ngrok.log for detailed connection info"' >> /start.sh && \
+    echo '' >> /start.sh && \
+    echo '# Keep container running and show real-time logs' >> /start.sh && \
+    echo 'tail -f /var/log/ngrok.log' >> /start.sh
 
 RUN chmod +x /start.sh
 
