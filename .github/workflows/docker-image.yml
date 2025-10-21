@@ -38,16 +38,19 @@ jobs:
         docker ps -a
         
         # Show ngrok logs
-        echo "=== NGROK LOGS ==="
-        docker logs ngrok-test-container --tail 50
+        echo "=== NGROK LOGS (last 100 lines) ==="
+        docker logs ngrok-test-container --tail 100
         
         # Try to get tunnel information via API
-        echo "=== ATTEMPTING TO GET TUNNEL INFO ==="
-        docker exec ngrok-test-container curl -s http://localhost:4040/api/tunnels 2>/dev/null || echo "API not ready yet"
+        echo "=== ATTEMPTING TO GET TUNNEL INFO VIA API ==="
+        docker exec ngrok-test-container curl -s http://localhost:4040/api/tunnels || echo "API not ready yet"
         
         # Show full logs if tunnel not found
-        echo "=== FULL NGROK LOGS ==="
-        docker logs ngrok-test-container
+        echo "=== RECENT NGROK LOGS ==="
+        docker logs ngrok-test-container | tail -50
+        
+        # Save logs to file for artifact
+        docker logs ngrok-test-container > ngrok-logs.txt
         
         # Cleanup
         echo "🧹 Cleaning up..."
@@ -61,21 +64,19 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ngrok-logs
-        path: |
-          /tmp/ngrok-output.txt
+        path: ngrok-logs.txt
         retention-days: 1
 
-  manual-test:
+  quick-test:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push'
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Build and run interactive test
+    - name: Quick build test
       run: |
-        docker build . --file Dockerfile --tag interactive-test
-        echo "🎯 Starting interactive test - check GitHub Actions logs for ngrok URL"
-        echo "⏰ This will run for 2 minutes to capture ngrok connection..."
-        timeout 120s docker run --rm interactive-test || true
+        # Just build to verify Dockerfile is valid
+        docker build . --file Dockerfile --tag quick-test
+        echo "✅ Dockerfile is valid and builds successfully"
