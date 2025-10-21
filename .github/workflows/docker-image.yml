@@ -36,25 +36,18 @@ jobs:
         echo "=== NGROK LOGS ==="
         docker logs ngrok-test
         
-        # Check if token was configured
-        echo "=== CHECKING TOKEN CONFIG ==="
-        if docker logs ngrok-test | grep -q "Authtoken saved"; then
-          echo "✅ Token configured successfully"
-        else
-          echo "❌ Token not configured"
-        fi
-        
-        # Look for the ngrok URL
-        echo "=== SEARCHING FOR NGROK URL ==="
+        # Look for success indicators
+        echo "=== CHECKING FOR SUCCESS ==="
         if docker logs ngrok-test | grep -q "started tunnel"; then
-          echo "✅ Tunnel started successfully!"
-          docker logs ngrok-test | grep "started tunnel"
+          echo "🎉 SUCCESS: Ngrok tunnel started!"
+          echo "📡 TUNNEL URL:"
+          docker logs ngrok-test | grep "started tunnel" | grep -o "url=tcp://[^ ]*"
         elif docker logs ngrok-test | grep -q "tcp://"; then
-          echo "✅ Found ngrok URL!"
+          echo "🎉 SUCCESS: Found ngrok URL!"
           docker logs ngrok-test | grep "tcp://"
         else
-          echo "❌ No tunnel URL found"
-          docker logs ngrok-test | tail -20
+          echo "❌ No tunnel URL found. Full logs:"
+          docker logs ngrok-test
         fi
         
         # Save logs
