@@ -2,12 +2,13 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install packages
+# Install packages including gnupg for repository
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       openssh-server \
       curl \
-      unzip && \
+      wget \
+      gnupg && \
     rm -rf /var/lib/apt/lists/*
 
 # SSH setup
@@ -16,11 +17,11 @@ RUN echo 'root:Darkboy336' | chpasswd && \
     sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
     sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
 
-# Install ngrok using curl and save to file first
-RUN curl -fsSL https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz -o ngrok.tgz && \
-    tar -xzf ngrok.tgz -C /usr/local/bin/ && \
-    chmod +x /usr/local/bin/ngrok && \
-    rm ngrok.tgz
+# Install ngrok from official repository
+RUN curl -fsSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc | tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null && \
+    echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | tee /etc/apt/sources.list.d/ngrok.list && \
+    apt-get update && \
+    apt-get install -y ngrok
 
 # Configure ngrok
 RUN ngrok config add-authtoken "34914Ptd48gbHXPmcNYxWEXCxpu_3V4itphQ1buQFCVEn8C1h"
